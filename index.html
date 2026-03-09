@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRON TITAN — Rise of the Mechanized</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --steel: #8fa8b8;
+    --gold: #c8a84b;
+    --deep: #050a12;
+    --electric: #00d4ff;
+    --storm: #1a2a3a;
+    --glow: rgba(0,212,255,0.15);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  html { scroll-behavior: smooth; scroll-snap-type: y mandatory; }
+
+  body {
+    background: var(--deep);
+    color: #cdd8e3;
+    font-family: 'Rajdhani', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* ── Custom Cursor ── */
+  #cursor {
+    width: 16px; height: 16px;
+    border: 2px solid var(--electric);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: transform 0.1s, width 0.2s, height 0.2s, background 0.2s;
+    mix-blend-mode: screen;
+  }
+  #cursor-dot {
+    width: 4px; height: 4px;
+    background: var(--electric);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%,-50%);
+  }
+
+  /* ── Scanline overlay ── */
+  body::after {
+    content:'';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9000;
+  }
+
+  /* ══════════════════════════════════════
+     PAGE 1 — HERO / 3D VIDEO SCREEN
+  ══════════════════════════════════════ */
+  #page1 {
+    height: 100vh;
+    scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 80%, #0a1a2a 0%, #020508 100%);
+  }
+
+  /* Particle field */
+  #particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Electric arc lines */
+  .arc-line {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, var(--electric), transparent);
+    height: 1px;
+    opacity: 0;
+    animation: arcFlash 4s infinite;
+  }
+  @keyframes arcFlash {
+    0%,100%{opacity:0;transform:scaleX(0);}
+    10%{opacity:0.7;transform:scaleX(1);}
+    20%{opacity:0;transform:scaleX(1);}
+  }
+
+  /* Nav */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(2,5,8,0.9) 0%, transparent 100%);
+    backdrop-filter: blur(4px);
+  }
+  .nav-logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: 0.3em;
+    color: var(--electric);
+    text-shadow: 0 0 20px var(--electric);
+  }
+  .nav-links {
+    display: flex;
+    gap: 36px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    color: var(--steel);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+  .nav-links a:hover { color: var(--electric); }
+
+  /* 3D Stage */
+  #stage {
+    perspective: 1100px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #screen-wrap {
+    transform-style: preserve-3d;
+    position: relative;
+    transition: transform 0.08s ease-out;
+  }
+
+  /* The 3D screen frame */
+  .screen-frame {
+    position: relative;
+    transform-style: preserve-3d;
+  }
+
+  /* Screen face — tall portrait ratio to show full robot figure */
+  .screen-face {
+    width: 360px;
+    height: 600px;
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      0 0 60px rgba(0,212,255,0.45),
+      0 0 140px rgba(0,212,255,0.2),
+      inset 0 0 30px rgba(0,0,0,0.7);
+    border: 2px solid rgba(0,212,255,0.55);
+    backface-visibility: hidden;
+  }
+
+  /* Smooth radial vignette on screen edges */
+  .screen-face::after {
+    content:'';
+    position:absolute;
+    inset:0;
+    background: radial-gradient(ellipse at center, transparent 48%, rgba(0,5,15,0.88) 100%);
+    pointer-events:none;
+    z-index:2;
+    border-radius: 24px;
+  }
+
+  .screen-face video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center center;
+    display: block;
+    background: #000;
+  }
+
+  /* Back face — second live video, mirrored for correct read from behind */
+  .screen-back {
+    width: 360px;
+    height: 600px;
+    border-radius: 24px;
+    position: absolute;
+    top: 0; left: 0;
+    background: #000;
+    border: 2px solid rgba(0,212,255,0.45);
+    backface-visibility: hidden;
+    transform: rotateY(180deg);
+    overflow: hidden;
+    box-shadow:
+      0 0 60px rgba(0,212,255,0.35),
+      0 0 140px rgba(0,212,255,0.15),
+      inset 0 0 30px rgba(0,0,0,0.7);
+  }
+  .screen-back::after {
+    content:'';
+    position:absolute;
+    inset:0;
+    background: radial-gradient(ellipse at center, transparent 48%, rgba(0,5,15,0.88) 100%);
+    pointer-events:none;
+    z-index:2;
+    border-radius: 24px;
+  }
+  .screen-back video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center center;
+    display: block;
+    background: #000;
+    transform: scaleX(-1); /* mirror so it reads correctly from the back */
+  }
+
+  /* Glowing edge ring around screen */
+  .screen-ring {
+    position: absolute;
+    inset: -20px;
+    border-radius: 40px;
+    border: 1px solid rgba(0,212,255,0.15);
+    box-shadow: 0 0 40px rgba(0,212,255,0.12);
+    pointer-events: none;
+  }
+
+  /* Screen thickness — all 4 edges visible as it spins */
+  .screen-side-top {
+    width: 360px;
+    height: 18px;
+    position: absolute;
+    top: -9px; left: 0;
+    background: linear-gradient(180deg, rgba(0,212,255,0.25), rgba(0,212,255,0.06));
+    transform: rotateX(90deg);
+    transform-origin: bottom center;
+  }
+  .screen-side-bottom {
+    width: 360px;
+    height: 18px;
+    position: absolute;
+    bottom: -9px; left: 0;
+    background: linear-gradient(0deg, rgba(0,212,255,0.25), rgba(0,212,255,0.06));
+    transform: rotateX(-90deg);
+    transform-origin: top center;
+  }
+  .screen-side-left {
+    width: 18px;
+    height: 600px;
+    position: absolute;
+    top: 0; left: -9px;
+    background: linear-gradient(90deg, rgba(0,212,255,0.2), rgba(0,212,255,0.05));
+    transform: rotateY(-90deg);
+    transform-origin: right center;
+  }
+  .screen-side-right {
+    width: 18px;
+    height: 600px;
+    position: absolute;
+    top: 0; right: -9px;
+    background: linear-gradient(90deg, rgba(0,212,255,0.05), rgba(0,212,255,0.2));
+    transform: rotateY(90deg);
+    transform-origin: left center;
+  }
+
+  /* HUD overlays */
+  .hud-corner {
+    position: absolute;
+    width: 30px; height: 30px;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .hud-corner.tl { top: 10px; left: 10px; border-top: 2px solid var(--electric); border-left: 2px solid var(--electric); }
+  .hud-corner.tr { top: 10px; right: 10px; border-top: 2px solid var(--electric); border-right: 2px solid var(--electric); }
+  .hud-corner.bl { bottom: 10px; left: 10px; border-bottom: 2px solid var(--electric); border-left: 2px solid var(--electric); }
+  .hud-corner.br { bottom: 10px; right: 10px; border-bottom: 2px solid var(--electric); border-right: 2px solid var(--electric); }
+
+  /* Hero text */
+  .hero-title {
+    position: absolute;
+    bottom: 10vh;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .hero-title h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2rem, 5vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: 0.25em;
+    color: #fff;
+    text-shadow:
+      0 0 30px rgba(0,212,255,0.8),
+      0 0 60px rgba(0,212,255,0.4),
+      0 4px 0 rgba(0,0,0,0.8);
+    animation: titlePulse 3s ease-in-out infinite;
+  }
+  @keyframes titlePulse {
+    0%,100%{ text-shadow: 0 0 30px rgba(0,212,255,0.8), 0 0 60px rgba(0,212,255,0.4), 0 4px 0 rgba(0,0,0,0.8); }
+    50%{ text-shadow: 0 0 50px rgba(0,212,255,1), 0 0 100px rgba(0,212,255,0.6), 0 4px 0 rgba(0,0,0,0.8); }
+  }
+  .hero-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.5em;
+    color: var(--steel);
+    margin-top: 8px;
+    animation: fadeIn 2s ease 0.5s both;
+  }
+
+  /* Sound placeholder */
+  .sound-placeholder {
+    position: absolute;
+    top: 24px;
+    right: 48px;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: rgba(0,212,255,0.6);
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 8px 16px;
+    border-radius: 4px;
+    background: rgba(0,5,15,0.8);
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .sound-placeholder:hover {
+    border-color: var(--electric);
+    color: var(--electric);
+    box-shadow: 0 0 20px rgba(0,212,255,0.3);
+  }
+  .sound-icon {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+  }
+  .sound-bar {
+    width: 3px;
+    background: var(--electric);
+    border-radius: 2px;
+    animation: soundWave 1.2s ease-in-out infinite;
+  }
+  .sound-bar:nth-child(1){ height:6px; animation-delay:0s; }
+  .sound-bar:nth-child(2){ height:12px; animation-delay:0.2s; }
+  .sound-bar:nth-child(3){ height:8px; animation-delay:0.4s; }
+  .sound-bar:nth-child(4){ height:14px; animation-delay:0.1s; }
+  .sound-bar:nth-child(5){ height:5px; animation-delay:0.3s; }
+  @keyframes soundWave {
+    0%,100%{ transform: scaleY(0.4); opacity:0.4; }
+    50%{ transform: scaleY(1); opacity:1; }
+  }
+
+  /* Scroll indicator */
+  .scroll-hint {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.4em;
+    color: rgba(0,212,255,0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 3s ease 1s both;
+  }
+  .scroll-arrow {
+    width: 14px; height: 14px;
+    border-right: 1px solid rgba(0,212,255,0.5);
+    border-bottom: 1px solid rgba(0,212,255,0.5);
+    transform: rotate(45deg);
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%,100%{transform:rotate(45deg) translate(0,0);}
+    50%{transform:rotate(45deg) translate(4px,4px);}
+  }
+
+  /* ══════════════════════════════════════
+     PAGE 2 — PARALLAX POSTER BG
+  ══════════════════════════════════════ */
+  #page2 {
+    height: 100vh;
+    scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .parallax-bg {
+    position: absolute;
+    inset: -40%;
+    background-image: url('pac1.png');
+    background-size: cover;
+    background-position: center 30%;
+    will-change: transform;
+    image-rendering: high-quality;
+    transform: translateY(0px);
+  }
+
+  .parallax-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(0deg,
+        rgba(2,5,10,0.92) 0%,
+        rgba(2,5,10,0.15) 25%,
+        rgba(2,5,10,0.05) 50%,
+        rgba(2,5,10,0.15) 75%,
+        rgba(2,5,10,0.92) 100%
+      );
+  }
+
+  .page2-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 0 40px;
+    max-width: 900px;
+  }
+
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.6em;
+    color: var(--electric);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    opacity: 0.8;
+  }
+
+  .page2-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    text-shadow: 0 0 60px rgba(0,212,255,0.7), 0 2px 20px rgba(0,0,0,1), 0 0 2px rgba(0,0,0,1);
+    margin-bottom: 28px;
+  }
+
+  .page2-text {
+    font-size: 1.15rem;
+    line-height: 1.9;
+    color: rgba(210,230,245,0.95);
+    font-weight: 400;
+    max-width: 680px;
+    margin: 0 auto 40px;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.9);
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 60px;
+    justify-content: center;
+    margin-top: 48px;
+  }
+  .stat-item { text-align: center; }
+  .stat-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(200,168,75,0.6);
+  }
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--steel);
+    margin-top: 4px;
+  }
+
+  /* 3D floating divider */
+  .divider-3d {
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--electric), transparent);
+    margin: 32px auto;
+    position: relative;
+  }
+  .divider-3d::before {
+    content:'';
+    position:absolute;
+    inset:-4px;
+    background: linear-gradient(90deg, transparent, rgba(0,212,255,0.2), transparent);
+    filter: blur(4px);
+  }
+
+  /* ══════════════════════════════════════
+     PAGE 3 — SPECS / SYSTEMS
+  ══════════════════════════════════════ */
+  #page3 {
+    height: 100vh;
+    scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #020508 0%, #040b14 50%, #020508 100%);
+  }
+
+  .hex-grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='104'%3E%3Cpolygon points='30,2 58,17 58,47 30,62 2,47 2,17' fill='none' stroke='%2300d4ff' stroke-width='1'/%3E%3C/svg%3E");
+    background-size: 60px 52px;
+  }
+
+  .page3-content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 1100px;
+    padding: 0 48px;
+  }
+
+  .page3-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.8rem, 4vw, 3.5rem);
+    font-weight: 900;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 60px;
+    letter-spacing: 0.15em;
+  }
+
+  .specs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .spec-card {
+    background: rgba(0,20,40,0.6);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 8px;
+    padding: 28px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  }
+  .spec-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    border-color: rgba(0,212,255,0.5);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 30px rgba(0,212,255,0.1);
+  }
+  .spec-card::before {
+    content:'';
+    position:absolute;
+    top:0; left:0; right:0;
+    height:2px;
+    background: linear-gradient(90deg, transparent, var(--electric), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .spec-card:hover::before { opacity:1; }
+
+  .spec-number {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: rgba(0,212,255,0.4);
+    letter-spacing: 0.3em;
+    margin-bottom: 12px;
+  }
+  .spec-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--electric);
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .spec-value {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    margin-bottom: 8px;
+  }
+  .spec-desc {
+    font-size: 0.82rem;
+    color: var(--steel);
+    line-height: 1.6;
+  }
+  .spec-bar-wrap {
+    margin-top: 14px;
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+  }
+  .spec-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--electric), var(--gold));
+    border-radius: 2px;
+    transition: width 1.5s ease;
+  }
+
+  /* 3D rotating cube accent */
+  .cube-accent {
+    position: absolute;
+    right: 48px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 120px;
+    height: 120px;
+    perspective: 400px;
+    display: none;
+  }
+
+  /* ══════════════════════════════════════
+     PAGE 4 — CALL TO ACTION
+  ══════════════════════════════════════ */
+  #page4 {
+    height: 100vh;
+    scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page4-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      radial-gradient(ellipse at 30% 70%, rgba(0,80,140,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse at 70% 30%, rgba(200,168,75,0.07) 0%, transparent 50%),
+      linear-gradient(180deg, rgba(2,5,8,0.55) 0%, rgba(3,12,23,0.55) 100%);
+  }
+
+  /* Animated grid floor */
+  .grid-floor {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    z-index: 2;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    transform: perspective(600px) rotateX(60deg);
+    transform-origin: bottom center;
+    animation: gridMove 4s linear infinite;
+  }
+  @keyframes gridMove {
+    0%{ background-position: 0 0; }
+    100%{ background-position: 0 60px; }
+  }
+
+  .page4-content {
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    max-width: 800px;
+    padding: 0 40px;
+  }
+
+  .page4-eyebrow {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.7em;
+    color: var(--gold);
+    margin-bottom: 24px;
+    text-transform: uppercase;
+  }
+
+  .page4-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2.5rem, 7vw, 6rem);
+    font-weight: 900;
+    line-height: 0.95;
+    color: #fff;
+    text-shadow: 0 0 80px rgba(0,212,255,0.4);
+    margin-bottom: 36px;
+    letter-spacing: 0.05em;
+  }
+  .page4-title span { color: var(--electric); }
+
+  .page4-body {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: rgba(160,185,210,0.8);
+    max-width: 560px;
+    margin: 0 auto 48px;
+  }
+
+  .cta-group {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 16px 40px;
+    background: var(--electric);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 0 30px rgba(0,212,255,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary::before {
+    content:'';
+    position:absolute;
+    inset:-100%;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%);
+    transition: inset 0.5s;
+  }
+  .btn-primary:hover::before { inset:100%; }
+  .btn-primary:hover {
+    box-shadow: 0 0 60px rgba(0,212,255,0.7);
+    transform: translateY(-2px);
+  }
+
+  .btn-secondary {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 16px 40px;
+    background: transparent;
+    color: var(--electric);
+    border: 1px solid rgba(0,212,255,0.5);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .btn-secondary:hover {
+    background: rgba(0,212,255,0.08);
+    border-color: var(--electric);
+    box-shadow: 0 0 30px rgba(0,212,255,0.2);
+    transform: translateY(-2px);
+  }
+
+  .footer-line {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.3em;
+    color: rgba(100,130,160,0.4);
+    white-space: nowrap;
+  }
+
+  /* ══════════════════════════════════════
+     UTILITIES
+  ══════════════════════════════════════ */
+  @keyframes fadeIn {
+    from{opacity:0;transform:translateY(10px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ══════════════════════════════════════
+     MOBILE RESPONSIVE
+  ══════════════════════════════════════ */
+  @media (max-width: 768px) {
+    nav { padding: 16px 20px; }
+    .nav-links { display: none; }
+
+    .screen-face {
+      width: 72vw;
+      height: calc(72vw * 5/3);
+    }
+    .screen-side-top, .screen-side-bottom { width: 72vw; }
+    .screen-side-left, .screen-side-right { height: calc(72vw * 5/3); }
+    .screen-back { width: 72vw; height: calc(72vw * 5/3); }
+
+    .hero-title h1 { font-size: 1.8rem; }
+
+    .specs-grid { grid-template-columns: 1fr; gap: 14px; }
+    .page3-content { padding: 0 20px; }
+
+    .stat-row { gap: 32px; flex-wrap: wrap; }
+
+    .sound-placeholder { right: 20px; }
+
+    body { cursor: auto; }
+    #cursor, #cursor-dot { display: none; }
+  }
+
+  @media (max-width: 480px) {
+    .screen-face { border-radius: 16px; }
+    .page2-title, .page3-title, .page4-title { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Custom Cursor -->
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-logo">⬡ IRON TITAN</div>
+  <ul class="nav-links">
+    <li><a href="#page1">ENGAGE</a></li>
+    <li><a href="#page2">ORIGIN</a></li>
+    <li><a href="#page3">SYSTEMS</a></li>
+    <li><a href="#page4">DEPLOY</a></li>
+  </ul>
+</nav>
+
+<!-- Sound Button -->
+<div class="sound-placeholder" id="soundBtn" title="Click to mute audio">
+  <div class="sound-icon">
+    <div class="sound-bar"></div>
+    <div class="sound-bar"></div>
+    <div class="sound-bar"></div>
+    <div class="sound-bar"></div>
+    <div class="sound-bar"></div>
+  </div>
+  <span class="sound-label">AUDIO · ON</span>
+</div>
+
+<!-- ═══ PAGE 1 ═══ -->
+<section id="page1">
+  <!-- Background ambient audio — low volume loop -->
+  <audio id="bgAudio" loop src="audio_bg.mp3"></audio>
+  <canvas id="particles"></canvas>
+
+  <!-- Arc lines -->
+  <div class="arc-line" style="top:20%;left:10%;width:80%;animation-delay:0s;"></div>
+  <div class="arc-line" style="top:65%;left:5%;width:60%;animation-delay:2s;"></div>
+  <div class="arc-line" style="top:80%;left:20%;width:50%;animation-delay:3.5s;"></div>
+
+  <div id="stage">
+    <div id="screen-wrap">
+      <div class="screen-frame" id="screenFrame">
+        <div class="screen-ring"></div>
+        <!-- FRONT FACE -->
+        <div class="screen-face" id="screenFace">
+          <div class="hud-corner tl"></div>
+          <div class="hud-corner tr"></div>
+          <div class="hud-corner bl"></div>
+          <div class="hud-corner br"></div>
+          <video
+            id="mainVideo"
+            autoplay
+            loop
+            muted
+            playsinline
+            src="Robot_Worm_s_View_Video_Generation.mp4"
+          ></video>
+        </div>
+        <!-- BACK FACE — fist fight video on reverse side -->
+        <div class="screen-back">
+          <div class="hud-corner tl"></div>
+          <div class="hud-corner tr"></div>
+          <div class="hud-corner bl"></div>
+          <div class="hud-corner br"></div>
+          <video
+            id="backVideo"
+            autoplay
+            loop
+            muted
+            playsinline
+            src="Giant_Robots_Fierce_Fist_Fight.mp4"
+          ></video>
+        </div>
+        <!-- EDGE THICKNESS -->
+        <div class="screen-side-top"></div>
+        <div class="screen-side-bottom"></div>
+        <div class="screen-side-left"></div>
+        <div class="screen-side-right"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-title">
+    <h1>IRON TITAN</h1>
+    <div class="hero-sub">RISE OF THE MECHANIZED · SERIES ONE</div>
+  </div>
+
+  <div class="scroll-hint">
+    SCROLL TO DESCEND
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- ═══ PAGE 2 ═══ -->
+<section id="page2">
+  <div class="parallax-bg" id="parallaxBg"></div>
+  <div class="parallax-overlay"></div>
+  <div class="page2-content reveal">
+    <div class="section-label">// CLASSIFIED BRIEFING — UNIT ALPHA //</div>
+    <h2 class="page2-title">THE STORM<br>WALKER</h2>
+    <div class="divider-3d"></div>
+    <p class="page2-text">
+      Born from the wreckage of failed nations and forged in the deepest oceanic trenches, 
+      Iron Titan stands as humanity's last bulwark against extinction-class threats. 
+      Towering 85 meters above the ocean surface, it walks where no vessel can sail 
+      and strikes where no weapon can reach.
+    </p>
+    <div class="stat-row">
+      <div class="stat-item">
+        <div class="stat-num">85m</div>
+        <div class="stat-label">COMBAT HEIGHT</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">7,400t</div>
+        <div class="stat-label">GROSS MASS</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">2.4GW</div>
+        <div class="stat-label">CORE OUTPUT</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">MK·IX</div>
+        <div class="stat-label">ITERATION</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PAGE 3 ═══ -->
+<section id="page3">
+  <div class="hex-grid"></div>
+  <div class="page3-content">
+    <div class="section-label" style="text-align:center;margin-bottom:16px;">// TACTICAL SYSTEMS OVERVIEW //</div>
+    <h2 class="page3-title reveal">COMBAT ARCHITECTURE</h2>
+    <div class="specs-grid">
+      <div class="spec-card reveal">
+        <div class="spec-number">SYS · 001</div>
+        <div class="spec-name">PLASMA CORE</div>
+        <div class="spec-value">2.4 GigaWatts</div>
+        <div class="spec-desc">Toroidal fusion reactor with zero-point modulation. Sustained combat output for 72 hours before resync.</div>
+        <div class="spec-bar-wrap"><div class="spec-bar" style="width:95%"></div></div>
+      </div>
+      <div class="spec-card reveal">
+        <div class="spec-number">SYS · 002</div>
+        <div class="spec-name">NEURAL BRIDGE</div>
+        <div class="spec-value">Dual Pilot Sync</div>
+        <div class="spec-desc">Shared consciousness drift allows two pilots to operate as a single combat intelligence unit.</div>
+        <div class="spec-bar-wrap"><div class="spec-bar" style="width:88%"></div></div>
+      </div>
+      <div class="spec-card reveal">
+        <div class="spec-number">SYS · 003</div>
+        <div class="spec-name">STORM ARMOR</div>
+        <div class="spec-value">Mk-IX Titanite</div>
+        <div class="spec-desc">Layered nanocrystalline alloy composite. Tested against Category V impact forces and plasma burns.</div>
+        <div class="spec-bar-wrap"><div class="spec-bar" style="width:92%"></div></div>
+      </div>
+      <div class="spec-card reveal">
+        <div class="spec-number">SYS · 004</div>
+        <div class="spec-name">VELOCITY</div>
+        <div class="spec-value">40 knots</div>
+        <div class="spec-desc">Hydrodynamic thruster arrays enable full-depth ocean traversal and rapid surface emergence.</div>
+        <div class="spec-bar-wrap"><div class="spec-bar" style="width:72%"></div></div>
+      </div>
+      <div class="spec-card reveal">
+        <div class="spec-number">SYS · 005</div>
+        <div class="spec-name">STRIKER ARRAY</div>
+        <div class="spec-value">Chain Sword MkV</div>
+        <div class="spec-desc">Variable-frequency vibrational blades capable of resonance disruption at molecular levels.</div>
+        <div class="spec-bar-wrap"><div class="spec-bar" style="width:97%"></div></div>
+      </div>
+      <div class="spec-card reveal">
+        <div class="spec-number">SYS · 006</div>
+        <div class="spec-name">COUNTERMEASURES</div>
+        <div class="spec-value">EM Shield Grid</div>
+        <div class="spec-desc">Electromagnetic pulse deflection dome with adaptive frequency cycling. 360° coverage radius.</div>
+        <div class="spec-bar-wrap"><div class="spec-bar" style="width:84%"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PAGE 4 ═══ -->
+<section id="page4">
+  <!-- Background video — slowest parallax layer -->
+  <video
+    id="page4Video"
+    autoplay
+    loop
+    muted
+    playsinline
+    src="Giant_Robot_Punching_Air_Video.mp4"
+    style="
+      position:absolute;
+      inset:-30%;
+      width:160%;
+      height:160%;
+      object-fit:cover;
+      opacity:0.5;
+      z-index:0;
+      will-change:transform;
+    "
+  ></video>
+  <div class="page4-bg"></div>
+  <div class="grid-floor"></div>
+  <!-- Text content — faster parallax layer (middle ground) -->
+  <div class="page4-content reveal" id="page4Content">
+    <div class="page4-eyebrow">⬡ DIRECTIVE OMEGA · CLEARANCE ALPHA ⬡</div>
+    <h2 class="page4-title">STAND BY<br>TO <span>ENGAGE</span></h2>
+    <p class="page4-body">
+      The ocean is no longer humanity's boundary. It is our battlefield. 
+      Pilot selection is open. The drift compatibility screening begins now. 
+      Are you ready to become part of the machine?
+    </p>
+    <div class="cta-group">
+      <button class="btn-primary">INITIATE PILOT PROGRAM</button>
+      <button class="btn-secondary">VIEW CLASSIFIED FILES</button>
+    </div>
+  </div>
+  <div class="footer-line">
+    © IRON TITAN PROJECT · CLASSIFIED SERIES ONE · ALL DEPLOYMENT DATA REDACTED
+  </div>
+</section>
+
+<script>
+/* ═══════════════════════════════════════
+   CUSTOM CURSOR
+════════════════════════════════════════ */
+const cursor = document.getElementById('cursor');
+const dot = document.getElementById('cursor-dot');
+let mx=0,my=0, cx=0,cy=0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  dot.style.left = mx+'px';
+  dot.style.top = my+'px';
+});
+function animCursor(){
+  cx += (mx-cx)*0.15;
+  cy += (my-cy)*0.15;
+  cursor.style.left = cx+'px';
+  cursor.style.top = cy+'px';
+  requestAnimationFrame(animCursor);
+}
+animCursor();
+
+/* ═══════════════════════════════════════
+   3D SCREEN — GENTLE AUTO-FLIP + MOUSE INFLUENCE
+   ─────────────────────────────────────
+   • Screen slowly rotates Y on its own (full 360 flip)
+   • Mouse position nudges the rotation slightly
+   • Smooth vertical bob for floating feel
+   • Touch: gyro tilt influence on mobile
+════════════════════════════════════════ */
+const screenFrame = document.getElementById('screenFrame');
+
+// Auto rotation accumulator
+let autoY = 0;
+const AUTO_SPEED = 0.18; // deg/frame — slow, cinematic flip
+
+// Current rendered values (lerp targets)
+let renderY = 0;
+let renderX = 0;
+
+// Mouse influence (subtle nudge, not full control)
+let mouseInfluenceY = 0;
+let mouseInfluenceX = 0;
+
+// Vertical bob
+let bobPhase = 0;
+const BOB_AMP = 12;    // px
+const BOB_SPD = 0.0006;
+
+// Mouse move — influence only, not drag
+document.addEventListener('mousemove', e => {
+  const page1 = document.getElementById('page1');
+  const rect  = page1.getBoundingClientRect();
+  if (rect.top > window.innerHeight || rect.bottom < 0) return;
+
+  // Normalize mouse to -1 … +1 from center
+  const nx = (e.clientX / window.innerWidth  - 0.5) * 2;
+  const ny = (e.clientY / window.innerHeight - 0.5) * 2;
+
+  // Subtle nudge: max ±18° Y offset, ±10° X tilt
+  mouseInfluenceY = nx * 18;
+  mouseInfluenceX = -ny * 10;
+});
+
+// Touch gyro for mobile
+window.addEventListener('deviceorientation', e => {
+  if (e.gamma == null) return;
+  mouseInfluenceY = Math.max(-18, Math.min(18, e.gamma * 0.3));
+  mouseInfluenceX = Math.max(-10, Math.min(10, (e.beta - 45) * 0.2));
+});
+
+function animate3D() {
+  // Advance auto spin
+  autoY += AUTO_SPEED;
+  if (autoY >= 360) autoY -= 360;
+
+  // Target = auto spin + mouse nudge layered on top
+  const targetY = autoY + mouseInfluenceY;
+  const targetX = mouseInfluenceX;
+
+  // Smooth lerp toward targets
+  renderY += (targetY - renderY) * 0.03;
+  renderX += (targetX - renderX) * 0.03;
+
+  // Vertical float bob
+  const bob = Math.sin(Date.now() * BOB_SPD) * BOB_AMP;
+
+  screenFrame.style.transform =
+    `translateY(${bob.toFixed(2)}px) rotateX(${renderX.toFixed(3)}deg) rotateY(${renderY.toFixed(3)}deg)`;
+
+  requestAnimationFrame(animate3D);
+}
+animate3D();
+
+/* ═══════════════════════════════════════
+   PARTICLE FIELD
+════════════════════════════════════════ */
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resizeCanvas(){
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+for(let i=0;i<120;i++){
+  particles.push({
+    x: Math.random()*W,
+    y: Math.random()*H,
+    r: Math.random()*1.5+0.3,
+    vx: (Math.random()-0.5)*0.3,
+    vy: (Math.random()-0.5)*0.3,
+    a: Math.random()*0.6+0.1,
+    pulse: Math.random()*Math.PI*2
+  });
+}
+
+function drawParticles(){
+  ctx.clearRect(0,0,W,H);
+  const t = Date.now()*0.001;
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+    if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+    const alpha = p.a * (0.5 + 0.5 * Math.sin(t*1.5 + p.pulse));
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle = `rgba(0,212,255,${alpha})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+/* ═══════════════════════════════════════
+   PARALLAX — PAGE 2
+   rAF loop immune to scroll-snap's instant jumps.
+   norm = 0 when page2 is centered on screen.
+   Shift is large (±280px) so motion is very obvious.
+   A lerp smooths it so it glides even after snap lands.
+════════════════════════════════════════ */
+const parallaxBg = document.getElementById('parallaxBg');
+const page2El    = document.getElementById('page2');
+let parallaxY    = 0;   // current rendered Y
+let parallaxTgt  = 0;   // target Y
+
+function parallaxLoop() {
+  const rect = page2El.getBoundingClientRect();
+  const vh   = window.innerHeight;
+  // norm: -1 fully below, 0 centred, +1 fully above
+  const norm = ((vh / 2) - (rect.top + rect.height / 2)) / vh;
+  parallaxTgt = norm * 280;                       // ← big range = very visible
+  parallaxY  += (parallaxTgt - parallaxY) * 0.06; // smooth lerp
+  parallaxBg.style.transform = `translateY(${parallaxY.toFixed(2)}px)`;
+  requestAnimationFrame(parallaxLoop);
+}
+parallaxLoop();
+
+/* ═══════════════════════════════════════
+   PARALLAX — PAGE 4 (dual layer)
+   Two independent layers move at different speeds:
+   • Video bg  → slowest (0.03 lerp, ±90px)  — deep background
+   • Text block → faster  (0.07 lerp, ±180px) — mid foreground
+   The gap between them creates visible depth as page snaps in.
+════════════════════════════════════════ */
+const page4El      = document.getElementById('page4');
+const p4Video      = document.getElementById('page4Video');
+const p4Content    = document.getElementById('page4Content');
+
+let p4VidY  = 0, p4VidTgt  = 0;   // video layer
+let p4TxtY  = 0, p4TxtTgt  = 0;   // text layer
+
+function page4ParallaxLoop() {
+  const rect = page4El.getBoundingClientRect();
+  const vh   = window.innerHeight;
+  // norm: -1 = fully below viewport, 0 = centred, +1 = fully above
+  const norm = ((vh / 2) - (rect.top + rect.height / 2)) / vh;
+
+  // Video — very slow, barely moves (deep layer)
+  p4VidTgt  = norm * 90;
+  p4VidY   += (p4VidTgt - p4VidY) * 0.03;
+  p4Video.style.transform = `translateY(${p4VidY.toFixed(2)}px)`;
+
+  // Text — moves more (closer layer), creates separation from video
+  p4TxtTgt  = norm * 180;
+  p4TxtY   += (p4TxtTgt - p4TxtY) * 0.07;
+  p4Content.style.transform = `translateY(${p4TxtY.toFixed(2)}px)`;
+
+  requestAnimationFrame(page4ParallaxLoop);
+}
+page4ParallaxLoop();
+
+/* ═══════════════════════════════════════
+   SCROLL REVEAL
+════════════════════════════════════════ */
+const revealEls = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if(e.isIntersecting){
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+revealEls.forEach(el => observer.observe(el));
+
+/* ═══════════════════════════════════════
+   BACKGROUND AUDIO — subtle loop, low volume
+   Browsers block autoplay until user interaction.
+   We start audio on first any click/touch, then
+   the sound button toggles mute on/off.
+════════════════════════════════════════ */
+const bgAudio   = document.getElementById('bgAudio');
+const soundBtn  = document.getElementById('soundBtn');
+const soundBars = soundBtn.querySelectorAll('.sound-bar');
+const soundLabel = soundBtn.querySelector('.sound-label');
+
+bgAudio.volume = 0.18; // subtle — 18% volume
+let audioStarted = false;
+let audioMuted   = false;
+
+function startAudio() {
+  if (audioStarted) return;
+  bgAudio.play().then(() => {
+    audioStarted = true;
+  }).catch(() => {});
+}
+
+// Fade in gradually once started
+function fadeInAudio(target = 0.18, duration = 3000) {
+  bgAudio.volume = 0;
+  const steps    = 60;
+  const interval = duration / steps;
+  const increment = target / steps;
+  let step = 0;
+  const timer = setInterval(() => {
+    step++;
+    bgAudio.volume = Math.min(target, bgAudio.volume + increment);
+    if (step >= steps) clearInterval(timer);
+  }, interval);
+}
+
+// Start on first user interaction anywhere
+['click','keydown','touchstart'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if (!audioStarted) {
+      bgAudio.play().then(() => {
+        audioStarted = true;
+        fadeInAudio(0.18, 3000);
+      }).catch(() => {});
+    }
+  }, { once: true });
+});
+
+// Sound button — toggle mute
+soundBtn.addEventListener('click', () => {
+  if (!audioStarted) {
+    bgAudio.play().then(() => {
+      audioStarted = true;
+      fadeInAudio(0.18, 2000);
+      audioMuted = false;
+      updateSoundUI();
+    }).catch(() => {});
+    return;
+  }
+  audioMuted = !audioMuted;
+  bgAudio.muted = audioMuted;
+  updateSoundUI();
+});
+
+function updateSoundUI() {
+  if (audioMuted) {
+    soundBars.forEach(b => b.style.animationPlayState = 'paused');
+    soundBtn.style.opacity = '0.4';
+    soundBtn.title = 'Audio muted — click to unmute';
+  } else {
+    soundBars.forEach(b => b.style.animationPlayState = 'running');
+    soundBtn.style.opacity = '1';
+    soundBtn.title = 'Click to mute audio';
+  }
+}
+
+/* ═══════════════════════════════════════
+   VIDEO LOOP — sync front & back
+════════════════════════════════════════ */
+const video = document.getElementById('mainVideo');
+const backVideo = document.getElementById('backVideo');
+// Stagger back video slightly for visual interest
+backVideo.addEventListener('loadeddata', () => {
+  backVideo.currentTime = 0;
+});
+video.addEventListener('ended', () => video.play());
+backVideo.addEventListener('ended', () => backVideo.play());
+
+/* ═══════════════════════════════════════
+   CURSOR HOVER FX
+════════════════════════════════════════ */
+document.querySelectorAll('a,button,.spec-card').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursor.style.width = '36px';
+    cursor.style.height = '36px';
+    cursor.style.background = 'rgba(0,212,255,0.12)';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursor.style.width = '16px';
+    cursor.style.height = '16px';
+    cursor.style.background = 'transparent';
+  });
+});
+</script>
+</body>
+</html>
